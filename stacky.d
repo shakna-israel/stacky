@@ -4,15 +4,31 @@ static import std.string;
 static import std.range.primitives;
 static import std.algorithm.mutation;
 static import std.file;
+static import core.stdc.stdlib;
+
+const uint v_major = 0;
+const uint v_minor = 0;
+const uint v_patch = 0;
 
 struct Primitive {
   void function() proc;
   int kind;
-  double number;
+  real number;
   string str;
 }
 
 Primitive[] stack;
+
+void std_append() {
+  auto a = stack[0];
+  auto b = stack[1];
+  std.range.primitives.popFrontN(stack, 2);
+  Primitive tmp;
+  tmp.kind = 1;
+  tmp.str = a.str ~= b.str;
+  stack ~= tmp;
+  return;
+}
 
 void std_add() {
   auto a = stack[0];
@@ -54,7 +70,7 @@ void std_divide() {
     std.range.primitives.popFrontN(stack, 2);
     Primitive tmp;
     tmp.kind = 0;
-    tmp.number = 0;
+    tmp.number = real.infinity;
     stack ~= tmp;
   } else {
     std.range.primitives.popFrontN(stack, 2);
@@ -75,6 +91,10 @@ void std_print() {
   } else {
     std.stdio.writefln("<function: %s>", token.proc);
   }
+}
+
+void std_exit() {
+  core.stdc.stdlib.exit(0);
 }
 
 auto tokenise(string s)
@@ -152,6 +172,16 @@ auto parse(string[] ast)
         tmp.kind = 2;
         tmp.proc = &std_print;
         ret ~= tmp;
+      } else if(i == ".." || i == "append") {
+        Primitive tmp;
+        tmp.kind = 2;
+        tmp.proc = &std_append;
+        ret ~= tmp;
+      } else if(i == "exit") {
+        Primitive tmp;
+        tmp.kind = 2;
+        tmp.proc = &std_exit;
+        ret ~= tmp;
       } else {
         std.stdio.writefln("Could not parse type of: <%s>", i);
         throw new std.string.StringException("Fatal Error: Failed to finish parsing.");
@@ -175,11 +205,11 @@ void eval(Primitive[] ast)
 
 void help() {
   std.stdio.writeln("stacky - Help\n");
-  std.stdio.writeln("stacky [options]");
+  std.stdio.writeln("stacky [options]\n");
   std.stdio.writeln("stacky [filename]");
-  std.stdio.writeln("stacky --repl");
-  std.stdio.writeln("stacky --help");
-  std.stdio.writeln("stacky --version");
+  std.stdio.writeln("stacky --repl | Enter Interactive Mode");
+  std.stdio.writeln("stacky --help | Display this message.");
+  std.stdio.writeln("stacky --version | Show current stacky version.");
 }
 
 void main(string[] args)
@@ -188,9 +218,15 @@ void main(string[] args)
     if(args[1] == "--help") {
       help();
     } else if(args[1] == "--version") {
-      std.stdio.writeln("v0.0.0");
+      std.stdio.writefln("v%d.%d.%d", v_major, v_minor, v_patch);
     } else if(args[1] == "--repl") {
-      std.stdio.writeln("NOT YET IMPLEMENTED");
+      std.stdio.writeln("stacky | Interactive Mode");
+      foreach(line; std.stdio.stdin.byLine()) {
+         try {
+           eval(parse(tokenise(std.conv.to!string(line))));
+           std_print();
+         } catch (std.string.StringException e) { }
+      }
     } else {
       foreach(ix, i; args[1..args.length]) {
         if(std.file.exists(i) != true) {
