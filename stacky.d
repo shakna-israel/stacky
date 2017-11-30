@@ -19,77 +19,139 @@ struct Primitive {
 
 Primitive[] stack;
 
+void std_dump() {
+  if(stack.length > 0) {
+    auto msg = "[ ";
+    foreach(ix, i; stack) {
+      if(i.kind == 0) {
+        msg ~= "<number>(" ~ std.conv.to!string(i.number) ~ "), ";
+      } else if(i.kind == 1) {
+        msg ~= "<string>(" ~ i.str ~ "), ";
+      } else {
+        msg ~= "<procedure>(" ~ std.conv.to!string(i.proc) ~ "), ";
+      }
+    }
+    std.stdio.writeln(msg ~ " ]");
+  } else {
+    std.stdio.writeln("[ ]");
+  }
+}
+
 void std_append() {
-  auto a = stack[0];
-  auto b = stack[1];
-  std.range.primitives.popFrontN(stack, 2);
-  Primitive tmp;
-  tmp.kind = 1;
-  tmp.str = a.str ~= b.str;
-  stack ~= tmp;
-  return;
+  if(stack.length > 1) {
+    auto a = stack[0];
+    auto b = stack[1];
+    std.range.primitives.popFrontN(stack, 2);
+    Primitive tmp;
+    tmp.kind = 1;
+    tmp.str = a.str ~= b.str;
+    stack ~= tmp;
+    return;
+  } else if(stack.length == 1) {
+  } else {
+    Primitive tmp;
+    tmp.kind = 1;
+    tmp.str = "";
+    stack ~= tmp;
+  }
 }
 
 void std_add() {
-  auto a = stack[0];
-  auto b = stack[1];
-  std.range.primitives.popFrontN(stack, 2);
-  Primitive tmp;
-  tmp.kind = 0;
-  tmp.number = a.number + b.number;
-  stack ~= tmp;
-  return;
+  if(stack.length > 1) {
+    auto a = stack[0];
+    auto b = stack[1];
+    std.range.primitives.popFrontN(stack, 2);
+    Primitive tmp;
+    tmp.kind = 0;
+    tmp.number = a.number + b.number;
+    stack ~= tmp;
+    return;
+  } else if(stack.length == 1) {
+  } else {
+    Primitive tmp;
+    tmp.kind = 0;
+    tmp.number = 0;
+    stack ~= tmp;
+  }
 }
 
 void std_minus() {
-  auto a = stack[0];
-  auto b = stack[1];
-  std.range.primitives.popFrontN(stack, 2);
-  Primitive tmp;
-  tmp.kind = 0;
-  tmp.number = a.number - b.number;
-  stack ~= tmp;
-  return;
+  if(stack.length > 1) {
+    auto a = stack[0];
+    auto b = stack[1];
+    std.range.primitives.popFrontN(stack, 2);
+    Primitive tmp;
+    tmp.kind = 0;
+    tmp.number = a.number - b.number;
+    stack ~= tmp;
+    return;
+  } else if(stack.length == 1) {
+  } else {
+    Primitive tmp;
+    tmp.kind = 0;
+    tmp.number = 0;
+    stack ~= tmp;
+  }
 }
 
 void std_multiply() {
-  auto a = stack[0];
-  auto b = stack[1];
-  std.range.primitives.popFrontN(stack, 2);
-  Primitive tmp;
-  tmp.kind = 0;
-  tmp.number = a.number * b.number;
-  stack ~= tmp;
-  return;
+  if(stack.length > 1) {
+    auto a = stack[0];
+    auto b = stack[1];
+    std.range.primitives.popFrontN(stack, 2);
+    Primitive tmp;
+    tmp.kind = 0;
+    tmp.number = a.number * b.number;
+    stack ~= tmp;
+    return;
+  } else if(stack.length == 1) {
+  } else {
+    Primitive tmp;
+    tmp.kind = 0;
+    tmp.number = 0;
+    stack ~= tmp;
+  }
 }
 
 void std_divide() {
-  auto a = stack[0];
-  auto b = stack[1];
-  if(b.number == 0) {
-    std.range.primitives.popFrontN(stack, 2);
-    Primitive tmp;
-    tmp.kind = 0;
-    tmp.number = real.infinity;
-    stack ~= tmp;
+  if(stack.length > 1) {
+    auto a = stack[0];
+    auto b = stack[1];
+    if(b.number == 0) {
+      std.range.primitives.popFrontN(stack, 2);
+      Primitive tmp;
+      tmp.kind = 0;
+      tmp.number = real.infinity;
+      stack ~= tmp;
+    } else {
+      std.range.primitives.popFrontN(stack, 2);
+      Primitive tmp;
+      tmp.kind = 0;
+      tmp.number = a.number / b.number;
+      stack ~= tmp;
+    }
+    return;
+  } else if(stack.length == 1) {
   } else {
-    std.range.primitives.popFrontN(stack, 2);
     Primitive tmp;
     tmp.kind = 0;
-    tmp.number = a.number / b.number;
+    tmp.number = 0;
     stack ~= tmp;
   }
-  return;
 }
 
 void std_print() {
-  auto token = stack[0];
-  if(token.kind == 0) {
-    std.stdio.writeln(token.number);
-  } else if(token.kind == 1) {
-    std.stdio.writeln(token.str);
+  if(stack.length > 0) {
+    auto token = stack[0];
+    if(token.kind == 0) {
+      std.stdio.writeln(token.number);
+    } else if(token.kind == 1) {
+      std.stdio.writeln(token.str);
+    } else {
+      std.stdio.writefln("<function: %s>", token.proc);
+    }
   } else {
-    std.stdio.writefln("<function: %s>", token.proc);
+    std.stdio.write("");
   }
 }
 
@@ -177,6 +239,11 @@ auto parse(string[] ast)
         tmp.kind = 2;
         tmp.proc = &std_append;
         ret ~= tmp;
+      } else if(i == "@" || i == "dump") {
+        Primitive tmp;
+        tmp.kind = 2;
+        tmp.proc = &std_dump;
+        ret ~= tmp;
       } else if(i == "exit") {
         Primitive tmp;
         tmp.kind = 2;
@@ -224,7 +291,9 @@ void main(string[] args)
       foreach(line; std.stdio.stdin.byLine()) {
          try {
            eval(parse(tokenise(std.conv.to!string(line))));
-           std_print();
+           std.stdio.stdout.write("$ ");
+           std.stdio.stdout.flush();
+           std_dump();
          } catch (std.string.StringException e) { }
       }
     } else {
